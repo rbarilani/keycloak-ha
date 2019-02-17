@@ -1,0 +1,68 @@
+version: '3'
+services:
+  # database
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    volumes:
+      - ./postgres/tmp/data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=pguser
+      - POSTGRES_PASSWORD=pgpassword
+      - POSTGRES_DB=keycloak
+  # load balancer
+  nginx:
+    container_name: nginx
+    build:
+      context: nginx
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    links:
+      - keycloak_1
+      - keycloak_2
+    depends_on:
+      - keycloak_1
+      - keycloak_2
+  keycloak_1:
+    container_name: keycloak_1
+    build:
+      context: keycloak
+      dockerfile: Dockerfile
+    links:
+      - postgres
+    depends_on:
+      - postgres
+    environment:
+      - DB_ADDR=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=keycloak
+      - DB_USER=pguser
+      - DB_PASSWORD=pgpassword
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=admin
+      - PROXY_ADDRESS_FORWARDING=true
+    volumes:
+      - ./keycloak/tmp/keycloak_1_data:/opt/jboss/keycloak/standalone/data
+  keycloak_2:
+    container_name: keycloak_2
+    build:
+      context: keycloak
+      dockerfile: Dockerfile
+    links:
+      - postgres
+      - keycloak_1
+    depends_on:
+      - postgres
+      - keycloak_1
+    environment:
+      - DB_ADDR=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=keycloak
+      - DB_USER=pguser
+      - DB_PASSWORD=pgpassword
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=admin
+      - PROXY_ADDRESS_FORWARDING=true
+    volumes:
+      - ./keycloak/tmp/keycloak_2_data:/opt/jboss/keycloak/standalone/data
